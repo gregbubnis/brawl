@@ -267,8 +267,8 @@ class BrawlApp(object):
 
         cl_dates = sorted(df_cl['date_CL'].unique())
 
-        gs_kw = dict(width_ratios=[3, 1])
-        fig, axs = plt.subplots(ncols=2, nrows=1, figsize=(12, 7), gridspec_kw=gs_kw)
+        gs_kw = dict(height_ratios=[1, 1])
+        fig, axs = plt.subplots(ncols=1, nrows=2, figsize=(8, 14), gridspec_kw=gs_kw)
         now_utc = datetime.datetime.utcnow()
 
         for ix, row in df_members.iterrows():
@@ -318,7 +318,8 @@ class BrawlApp(object):
         title += '%s %s UTC' % (str(now_utc)[:10], str(now_utc)[11:19])
         axs[0].set_title(title)
 
-
+        print(df_members['current'].value_counts().to_dict())
+        num_former = df_members['current'].value_counts().to_dict()[False]
 
         axs[1].sharey(axs[0])
         #cl_dates = sorted(df_cl['date_CL'].unique())
@@ -349,8 +350,10 @@ class BrawlApp(object):
         axs[1].imshow(arr, aspect=0.5, cmap='bone', vmin=-8, vmax=18, origin='lower')
         #axs[1].set_yticks(range(len(df_members)), df_members['name'])
         #axs[1].set_yticklabels([])
-        plt.setp(axs[1].get_yticklabels(), visible=False)
-        axs[1].yaxis.set_tick_params(size=0)
+        #plt.setp(axs[1].get_yticklabels(), visible=False)
+        #axs[1].yaxis.set_tick_params(size=0)
+
+        axs[1].axhline(num_former-0.5, color='k')
 
         #plt.setp(axs[1].get_yticklabels(), visible=False)
         # plt.tight_layout(h_pad=-3)
@@ -362,8 +365,9 @@ class BrawlApp(object):
         
         #plt.subplots_adjust(wspace=-2.0)
         #plt.tight_layout(h_pad=0)
-        plt.tight_layout()
-        plt.subplots_adjust(bottom=0.15)
+        plt.tight_layout(h_pad=4)
+
+        #plt.subplots_adjust(bottom=0.15)
 
 
         #plt.tight_layout(h_pad=-3)
