@@ -126,8 +126,13 @@ class BrawlApp(object):
         # make a dataframe of recent battles for current members
         battle_data = []
         for m in members:
-            df_battles = player_battle_log(m.tag, self.bs_client)
-            battle_data.append(df_battles)
+            #print("----")
+            #print(m.tag, m.name)
+            try:
+                df_battles = player_battle_log(m.tag, self.bs_client)
+                battle_data.append(df_battles)
+            except:
+                print('  could not get logs for %s %s' % (m.name, m.tag))
         # most recent battles
         df_battles = pd.concat(battle_data, axis=0).reset_index(drop=True)
 
@@ -195,31 +200,50 @@ class BrawlApp(object):
         member_data = [dict(name=m.name, tag=m.tag, trophies=m.trophies, current=m.tag in active_tags) for m in members]
         self.df_roster = pd.DataFrame(member_data).drop_duplicates(ignore_index=True).sort_values(by=['current', 'trophies'], ascending=[False, False])
 
-    def viz(self):
-        """quick and dirty matplotlib visualization to png file"""
-        num_battles = 50
 
-        #df_battles = self.df_battles
+    def process_data(self):
+        """"""
 
-        # concatenate ALL the logs (TODO factor out elsewheree)
+        # concatenate ALL the logs
         logs = sorted(glob.glob('%s/battles*csv' % self.battles_folder))
         big_df = pd.concat([pd.read_csv(x, index_col=0) for x in logs], axis=0, ignore_index=True).sort_values(by='datetime', ascending=True).reset_index(drop=True)
         df_battles = big_df
-
+        self.df_battles = df_battles
 
         # Update roster with all members (active or kicked) in the logs
         self.make_roster(tags=list(big_df['tag'].unique()))
         df_members = self.df_roster.sort_values(by=['current', 'trophies'], ascending=[True, True]).reset_index(drop=True)
-
-        #print(df_members)
+        self.df_members = df_members
 
         # dataframe just of CL values
         df_cl = df_battles[df_battles['is_CL']].copy()
-        df_cl['datetime_CL'] = [shift_datetime(x, 3) for x in df_cl['datetime']]
-        df_cl['date_CL'] = [x[0:10] for x in df_cl['datetime_CL'].values]
-        df_cl = df_cl.astype({'trophy_change':int})
-        #print(df_cl)
 
+        # generate club league dates
+        day1 = datetime.datetime(2022, 2, 3, 12, 0)
+        day2 = datetime.datetime(2022, 2, 5, 12, 0)
+        day3 = datetime.datetime(2022, 2, 7, 12, 0)
+        daynow = datetime.datetime.utcnow()
+        cl_dates = [day1, day2, day3]
+        while (cl_dates[-1]<=daynow):
+            cl_dates += [x + timedelta(days=7) for x in cl_dates[-3:]]
+
+        # map cl battles to the closest cl date
+        # (robust to the case where a very late battle spills over past 24h)
+        cl_dates_arr = np.array([x.timestamp()/86400 for x in cl_dates])
+        cl_battles_arr = [dtobj(x).timestamp()/86400 for x in df_cl['time_raw']]
+        ix = [np.ndarray.argmin(np.abs(cl_dates_arr-x)) for x in cl_battles_arr]
+        df_cl['date_CL'] = [str(cl_dates[i])[0:10] for i in ix]
+        df_cl = df_cl.astype({'trophy_change':int})
+        self.df_cl = df_cl
+
+    def viz(self):
+        """quick and dirty matplotlib visualization to png file"""
+        num_battles = 50
+
+
+        df_battles = self.df_battles
+        df_cl = self.df_cl
+        df_members = self.df_members
 
         # the figure
         fig, axs = plt.subplots(ncols=1, nrows=2, figsize=(8, 12)) #, gridspec_kw=gs_kw)
@@ -265,7 +289,7 @@ class BrawlApp(object):
 
         # NEXT FIGURE 7 DAYS OF BATTLES
 
-        cl_dates = sorted(df_cl['date_CL'].unique())
+        cl_dates = sorted(self.df_cl['date_CL'].unique())
 
         gs_kw = dict(height_ratios=[1, 1])
         fig, axs = plt.subplots(ncols=1, nrows=2, figsize=(8, 14), gridspec_kw=gs_kw)
@@ -303,9 +327,6 @@ class BrawlApp(object):
         axs[0].spines['right'].set_visible(False)
         axs[0].set_yticks(range(len(df_members)), df_members['name'])
         plt.draw()
-        print('wtf')
-        print(axs[0].get_xticklabels())
-        print(axs[0].get_xticks())
         #axs[0].set_xticks(axs[0].get_xticks(), rotation=55, ha='right')
         #axs[0].set_xticks(axs[0].get_xticks(), axs[0].get_xticklabels(), rotation=55, ha='right')
         #axs[0].tick_params(axis='x', labelrotation=55) #, ha='right')
@@ -323,7 +344,7 @@ class BrawlApp(object):
 
         axs[1].sharey(axs[0])
         #cl_dates = sorted(df_cl['date_CL'].unique())
-        df_plt = df_cl[['date_CL', 'tag', 'trophy_change']]
+        df_plt = self.df_cl[['date_CL', 'tag', 'trophy_change']]
         df_summed = df_plt.groupby(['date_CL', 'tag'], as_index=False).sum()
 
         print(df_summed.groupby(['date_CL'], as_index=False).sum())
@@ -396,4 +417,5 @@ if __name__ == "__main__":
         cfg = None
     xx = BrawlApp(cfg)
     xx.fetch_API_data()
+    xx.process_data()
     xx.viz()
