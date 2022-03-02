@@ -126,13 +126,12 @@ class BrawlApp(object):
         # make a dataframe of recent battles for current members
         battle_data = []
         for m in members:
-            #print("----")
-            #print(m.tag, m.name)
             try:
                 df_battles = player_battle_log(m.tag, self.bs_client)
                 battle_data.append(df_battles)
-            except:
-                print('  could not get logs for %s %s' % (m.name, m.tag))
+            except Exception as e:
+                print('  '+str(e).replace('\n'," "))
+                print('       could not get logs for %s %s' % (m.name, m.tag))
         # most recent battles
         df_battles = pd.concat(battle_data, axis=0).reset_index(drop=True)
 
