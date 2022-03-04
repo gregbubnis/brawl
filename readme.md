@@ -2,7 +2,14 @@
 
 Hacky web app that reports Brawlstars club stats
 
-This works by continuously fetching battle logs from the Brawlstars API, accumulating the information, and plotting some visualizations. Note that because the BS API only gives the 25 most recent battles, continuous querying and persistent storage are required.
+This works by continuously fetching battle logs from the Brawlstars API (using [brawlstats](https://github.com/SharpBit/brawlstats)), accumulating the information, and plotting some visualization. Because the BS API only gives the 25 most recent battles, continuous querying and persistent storage are required.
+
+## example output
+The visualization makes an image that, for my club, looks like this. It tracks recent activity of members (top panel) and club league tropies (bottom panel). 
+<p align="center">
+  <img src="http://ec2-3-142-238-38.us-east-2.compute.amazonaws.com/plot-7day-battles.png" width="500" title="hover text">
+</p>
+
 
 ## setup
 1. Set up the webserver
