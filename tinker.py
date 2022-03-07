@@ -347,6 +347,15 @@ class BrawlApp(object):
         df_summed = df_plt.groupby(['date_CL', 'tag'], as_index=False).sum()
 
         print(df_summed.groupby(['date_CL'], as_index=False).sum())
+        print(df_summed.columns)
+        print(df_summed.head(50))
+
+        # get avgss
+        tag2name= dict(zip(df_members['tag'], df_members['name']))
+        df_avgs = df_summed.groupby(['tag'], as_index=False).mean()
+        df_avgs['name'] = [tag2name[x] for x in df_avgs['tag']]
+        print(df_avgs)
+        #raise Exception()
 
         colmap = dict(zip(cl_dates , range(len(cl_dates))))
         rowmap = dict(zip(df_members['tag'], range(len(df_members))))
@@ -355,8 +364,14 @@ class BrawlApp(object):
 
         arr = np.zeros((len(df_members), len(cl_dates))).astype(int)
         for ix, row in df_summed.iterrows():
-            arr[row['row'], row['col']] = row.get('trophy_change', 0)
-            axs[1].text(row['col'], row['row'], str(row.get('trophy_change', 0)), ha='center', va='center')
+            tc = row.get('trophy_change', 0)
+            arr[row['row'], row['col']] = tc
+
+            if tc<10:
+                color='w'
+            else:
+                color='k'
+            axs[1].text(row['col'], row['row'], str(tc), ha='center', va='center', color=color)
 
             from matplotlib.lines import Line2D
 
@@ -367,7 +382,19 @@ class BrawlApp(object):
                 xxx.set_clip_on(False)
             #axs[1].set_clip_on(False)
 
-        axs[1].imshow(arr, aspect=0.5, cmap='bone', vmin=-8, vmax=18, origin='lower')
+
+
+        avgdict = dict(zip(df_avgs['tag'], df_avgs['trophy_change']))
+        avgs = [avgdict.get(k, 0) for k in df_members['tag']]
+        print(len(avgs), len(df_members))
+        for ix, row in df_members.iterrows():
+            #axs[1].text((ix-0.5)/len(df_members), 0.9, str(row['trophy_change']), ha='center', va='center', color='grey', transform=plt.gcf().transFigure)
+            axs[1].text(len(cl_dates)+0.25, ix, '%3.1f' % avgs[ix], ha='center', va='center', color='grey')
+            #print('%20s' % row['name'], row['trophy_change'])
+        #plt.subplots_adjust(right=0.25)
+
+
+        axs[1].imshow(arr, aspect=0.5, cmap='bone', vmin=-2, vmax=27, origin='lower')
         #axs[1].set_yticks(range(len(df_members)), df_members['name'])
         #axs[1].set_yticklabels([])
         #plt.setp(axs[1].get_yticklabels(), visible=False)
