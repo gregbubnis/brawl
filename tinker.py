@@ -114,7 +114,8 @@ class BrawlApp(object):
         self.club = self.bs_client.get_club(club_token)
         self.make_roster()
 
-
+        print('==== roster 1 ====')
+        print(self.df_roster)
 
         print(str(datetime.datetime.utcnow())[:19]+' SUCCESS __init__')
 
@@ -214,6 +215,9 @@ class BrawlApp(object):
         df_members = self.df_roster.sort_values(by=['current', 'trophies'], ascending=[True, True]).reset_index(drop=True)
         self.df_members = df_members
 
+        print('==== roster 2 ====')
+        print(self.df_roster)
+
         # dataframe just of CL values
         df_cl = df_battles[df_battles['is_CL']].copy()
 
@@ -244,54 +248,57 @@ class BrawlApp(object):
         df_cl = self.df_cl
         df_members = self.df_members
 
-        # the figure
-        fig, axs = plt.subplots(ncols=1, nrows=2, figsize=(8, 12)) #, gridspec_kw=gs_kw)
 
-        # PLOT RECENT BATTLE RESULTS (PANEL 0)
-        # making a discrete colormap
-        clist = ['tab:red', 'lightgrey', 'tab:green']
-        bounds = np.linspace(-1.2, 1.2, 4)
-        norm = mpl.colors.BoundaryNorm(bounds, 3)
-        cmap = mpl.colors.LinearSegmentedColormap.from_list('Custom cmap', clist, 3)
-        zdict = dict(victory=1, defeat=-1, draw=0, none=0)
+        # moar dataframes
+        df_plt = self.df_cl[['date_CL', 'tag', 'trophy_change']]
+        df_summed = df_plt.groupby(['date_CL', 'tag'], as_index=False).sum()
 
-        im = np.zeros((len(df_members), num_battles))
-        for ix, row in df_members.iterrows():
-            tag = row['tag']
-            bdata = df_battles[df_battles['tag'] == tag].sort_values(by='datetime', ascending=True)[-num_battles:].reset_index(drop=True)
-            pad = num_battles-len(bdata)
-            #print('name %25s  pad %i' % (row['name'], pad))
-            # plot CL trophies
-            for ixx, battle in bdata.iterrows():
-                if battle['is_CL']:
-                    axs[1].text(ixx+pad, ix, str(battle['trophy_change']), zorder=3, ha='center', va='center')
-
-            # win loss draw rasters
-            res = ['none']*pad+bdata['result'].values.tolist()
-            im[ix, :] = [zdict[x] for x in res]
-
-        now_utc = str(datetime.datetime.utcnow())
-        title = 'most recent battle results\n'
-        title += '%s %s UTC' % (now_utc[:10], now_utc[11:19])
-
-        axs[1].imshow(im, cmap=cmap, norm=norm, alpha=0.5)
-        axs[1].set_xticks([0, num_battles-1], ['old', 'new'])
-        axs[1].set_yticks(range(len(df_members)), df_members['name'])
-        axs[1].set_title(title)
-
-        # export png
-        plt.tight_layout()
-        out_file = os.path.join(self.output_folder, 'plot-recent-battles.png')
-        plt.savefig(out_file)
+        # get CL daily avgs
+        tag2name= dict(zip(df_members['tag'], df_members['name']))
+        df_avgs = df_summed.groupby(['tag'], as_index=False).mean()
+        df_avgs['name'] = [tag2name[x] for x in df_avgs['tag']]
 
 
+        # # the figure
+        # fig, axs = plt.subplots(ncols=1, nrows=2, figsize=(8, 12)) #, gridspec_kw=gs_kw)
+        # # PLOT RECENT BATTLE RESULTS (PANEL 0)
+        # # making a discrete colormap
+        # clist = ['tab:red', 'lightgrey', 'tab:green']
+        # bounds = np.linspace(-1.2, 1.2, 4)
+        # norm = mpl.colors.BoundaryNorm(bounds, 3)
+        # cmap = mpl.colors.LinearSegmentedColormap.from_list('Custom cmap', clist, 3)
+        # zdict = dict(victory=1, defeat=-1, draw=0, none=0)
+        # im = np.zeros((len(df_members), num_battles))
+        # for ix, row in df_members.iterrows():
+        #     tag = row['tag']
+        #     bdata = df_battles[df_battles['tag'] == tag].sort_values(by='datetime', ascending=True)[-num_battles:].reset_index(drop=True)
+        #     pad = num_battles-len(bdata)
+        #     #print('name %25s  pad %i' % (row['name'], pad))
+        #     # plot CL trophies
+        #     for ixx, battle in bdata.iterrows():
+        #         if battle['is_CL']:
+        #             axs[1].text(ixx+pad, ix, str(battle['trophy_change']), zorder=3, ha='center', va='center')
+        #     # win loss draw rasters
+        #     res = ['none']*pad+bdata['result'].values.tolist()
+        #     im[ix, :] = [zdict[x] for x in res]
+        # now_utc = str(datetime.datetime.utcnow())
+        # title = 'most recent battle results\n'
+        # title += '%s %s UTC' % (now_utc[:10], now_utc[11:19])
+        # axs[1].imshow(im, cmap=cmap, norm=norm, alpha=0.5)
+        # axs[1].set_xticks([0, num_battles-1], ['old', 'new'])
+        # axs[1].set_yticks(range(len(df_members)), df_members['name'])
+        # axs[1].set_title(title)
+        # # export png
+        # plt.tight_layout()
+        # out_file = os.path.join(self.output_folder, 'plot-recent-battles.png')
+        # plt.savefig(out_file)
 
         # NEXT FIGURE 7 DAYS OF BATTLES
 
         cl_dates = sorted(self.df_cl['date_CL'].unique())
 
-        gs_kw = dict(height_ratios=[1, 1])
-        fig, axs = plt.subplots(ncols=1, nrows=2, figsize=(8, 14), gridspec_kw=gs_kw)
+        gs_kw = dict(height_ratios=[1, 1, 1])
+        fig, axs = plt.subplots(ncols=1, nrows=3, figsize=(8, 22), gridspec_kw=gs_kw)
         now_utc = datetime.datetime.utcnow()
 
         for ix, row in df_members.iterrows():
@@ -343,19 +350,12 @@ class BrawlApp(object):
 
         axs[1].sharey(axs[0])
         #cl_dates = sorted(df_cl['date_CL'].unique())
-        df_plt = self.df_cl[['date_CL', 'tag', 'trophy_change']]
-        df_summed = df_plt.groupby(['date_CL', 'tag'], as_index=False).sum()
 
-        print(df_summed.groupby(['date_CL'], as_index=False).sum())
-        print(df_summed.columns)
-        print(df_summed.head(50))
 
-        # get avgss
-        tag2name= dict(zip(df_members['tag'], df_members['name']))
-        df_avgs = df_summed.groupby(['tag'], as_index=False).mean()
-        df_avgs['name'] = [tag2name[x] for x in df_avgs['tag']]
-        print(df_avgs)
-        #raise Exception()
+        # print(df_summed.groupby(['date_CL'], as_index=False).sum())
+        # print(df_summed.columns)
+        # print(df_summed.head(50))
+
 
         colmap = dict(zip(cl_dates , range(len(cl_dates))))
         rowmap = dict(zip(df_members['tag'], range(len(df_members))))
@@ -386,10 +386,10 @@ class BrawlApp(object):
 
         avgdict = dict(zip(df_avgs['tag'], df_avgs['trophy_change']))
         avgs = [avgdict.get(k, 0) for k in df_members['tag']]
-        print(len(avgs), len(df_members))
+        #print(len(avgs), len(df_members))
         for ix, row in df_members.iterrows():
             #axs[1].text((ix-0.5)/len(df_members), 0.9, str(row['trophy_change']), ha='center', va='center', color='grey', transform=plt.gcf().transFigure)
-            axs[1].text(len(cl_dates)+0.25, ix, '%3.1f' % avgs[ix], ha='center', va='center', color='grey')
+            axs[1].text(len(cl_dates)+0.25, ix, '%3.1f' % avgs[ix], ha='center', va='center', color='k')
             #print('%20s' % row['name'], row['trophy_change'])
         #plt.subplots_adjust(right=0.25)
 
@@ -400,13 +400,21 @@ class BrawlApp(object):
         #plt.setp(axs[1].get_yticklabels(), visible=False)
         #axs[1].yaxis.set_tick_params(size=0)
 
-        axs[1].axhline(num_former-0.5, color='k')
+        axs[1].axhline(num_former-0.5, color='salmon')
 
         #plt.setp(axs[1].get_yticklabels(), visible=False)
         # plt.tight_layout(h_pad=-3)
         axs[1].set_xticks(range(len(cl_dates)), [x[-5:] for x in cl_dates], rotation=70, ha='center')
-        axs[1].set_title('club league trophies')
+        axs[1].set_title('club league trophies (avg excluding zero days)')
 
+
+        ## CDF
+        df_avgs_sorted = df_avgs.sort_values(by='trophy_change', ascending=True).reset_index(drop=True)
+
+        print(df_avgs_sorted)
+        axs[2].plot(df_avgs_sorted['trophy_change'], df_avgs_sorted.index, '-o')
+        #axs[2].set_aspect(1.)
+        axs[2].grid()
 
         #axs[1].set_yticks(axs[1].get_yticks()[::2])
         
