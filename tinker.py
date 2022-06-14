@@ -114,8 +114,8 @@ class BrawlApp(object):
         self.club = self.bs_client.get_club(club_token)
         self.make_roster()
 
-        print('==== roster 1 ====')
-        print(self.df_roster)
+        # print('==== roster 1 ====')
+        # print(self.df_roster)
 
         print(str(datetime.datetime.utcnow())[:19]+' SUCCESS __init__')
 
@@ -185,6 +185,16 @@ class BrawlApp(object):
     #         df['override']=[False]*len(df)
     #         df.to_csv(log)
 
+    def export_json(self):
+        try:
+            data = [dict(row) for ix, row in self.df_battles.iterrows()]
+            json_file = os.path.join(self.battles_folder, 'all_battles.json')
+            with open(json_file, 'w') as f:
+                json.dump(data, f, indent=2)
+                f.write('\n')
+        except:
+            print('could not export json')
+
     def make_roster(self, tags=None):
         # current roster + extra tags (e.g. for former members)
         active_tags = [m.tag for m in self.club.get_members()]
@@ -215,8 +225,8 @@ class BrawlApp(object):
         df_members = self.df_roster.sort_values(by=['current', 'trophies'], ascending=[True, True]).reset_index(drop=True)
         self.df_members = df_members
 
-        print('==== roster 2 ====')
-        print(self.df_roster)
+        #print('==== roster 2 ====')
+        #print(self.df_roster)
 
         # dataframe just of CL values
         df_cl = df_battles[df_battles['is_CL']].copy()
@@ -298,7 +308,7 @@ class BrawlApp(object):
         cl_dates = sorted(self.df_cl['date_CL'].unique())
 
         gs_kw = dict(height_ratios=[1, 1, 1])
-        fig, axs = plt.subplots(ncols=1, nrows=3, figsize=(8, 22), gridspec_kw=gs_kw)
+        fig, axs = plt.subplots(ncols=1, nrows=3, figsize=(16, 26), gridspec_kw=gs_kw)
         now_utc = datetime.datetime.utcnow()
 
         for ix, row in df_members.iterrows():
@@ -345,7 +355,7 @@ class BrawlApp(object):
         title += '%s %s UTC' % (str(now_utc)[:10], str(now_utc)[11:19])
         axs[0].set_title(title)
 
-        print(df_members['current'].value_counts().to_dict())
+        #print(df_members['current'].value_counts().to_dict())
         num_former = df_members['current'].value_counts().to_dict()[False]
 
         axs[1].sharey(axs[0])
@@ -411,7 +421,7 @@ class BrawlApp(object):
         ## CDF
         df_avgs_sorted = df_avgs.sort_values(by='trophy_change', ascending=True).reset_index(drop=True)
 
-        print(df_avgs_sorted)
+        #print(df_avgs_sorted)
         axs[2].plot(df_avgs_sorted['trophy_change'], df_avgs_sorted.index, '-o')
         #axs[2].set_aspect(1.)
         axs[2].grid()
@@ -452,4 +462,5 @@ if __name__ == "__main__":
     xx = BrawlApp(cfg)
     xx.fetch_API_data()
     xx.process_data()
+    xx.export_json()
     xx.viz()
